@@ -18,8 +18,6 @@ from apiclient import errors
 # If modifying these scopes, delete the file token.pickle.
 SCOPES = ['https://www.googleapis.com/auth/gmail.compose']
 
-
-
 def CreateDraft(service, user_id, message_body):
     message = {'message': message_body}
     draft = service.users().drafts().create(userId=user_id, body=message).execute()
@@ -44,8 +42,6 @@ def CreateMessage(sender, to, subject, message_text):
   b64 = base64.urlsafe_b64encode(message.as_string().encode('utf-8')).decode('utf-8')
   return {'raw': b64}
 
-
-
 def reverse_date_format_text(text):
     words = text.split()
     dates_string = []
@@ -63,9 +59,7 @@ def reverse_date_format_text(text):
             result += s + '.'
             date_new_string = result[0:-1]            
         text = text.replace(date_string,result[0:-1])
-    return text
-        
-        
+    return text      
             
 
 def main():
@@ -92,20 +86,24 @@ def main():
             pickle.dump(creds, token)
 
     service = build('gmail', 'v1', credentials=creds)
+
     #Recieve all drafts
     results = service.users().drafts().list(userId='me').execute()
+
     #Extract first draft id
     draft_old_id = results['drafts'][0]['id']
+
     #Getting draft text data
     draft = service.users().drafts().get(userId='me', id=draft_old_id).execute()
+
     #b64 to string
     msg_str = base64.urlsafe_b64decode(draft['message']['payload']['body']['data'])
     draft_text = msg_str.decode('utf-8')
+
     #reverse dates in text of first draft
     draft_text_new = reverse_date_format_text(draft_text)
-    #sender = draft['message']['payload']['headers']
-    #print(sender)
-    #draft['to']
+
+    #creating new draft
     sender, to, subject = [''] * 3
     for header in draft['message']['payload']['headers']:
         if header['name'] == 'To':
@@ -114,15 +112,11 @@ def main():
             subject = header['value']
         if header['name'] == 'From':
             sender = header['value']
-    service.users().drafts().delete(userId='me', id=draft_old_id).execute()
-        
-
-
-
     new_message = CreateMessage(sender, to, subject, draft_text_new)
     CreateDraft(service, 'me', new_message)
     
-    
+    #deleting old draft
+    service.users().drafts().delete(userId='me', id=draft_old_id).execute()    
 
 if __name__ == '__main__':
     main()
